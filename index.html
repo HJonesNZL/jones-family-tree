@@ -1,0 +1,333 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Jones Family Tree</title><style>[hidden]{display:none!important}img{max-width:100%}</style></head><body><title>Jones Family Tree</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: an Admiralty chart. Pale sea ground, white chart paper for cards, buff "land" for the
+   direct line, magenta (the chart colour for lights and notes) for selection and links. Tree is the chart;
+   the detail panel is the pilot book entry for whoever is selected. */
+:root{
+  --sea:#E3EDF1; --sea-deep:#C9DCE4; --paper:#FBFCFA; --ink:#17232D; --ink-soft:#4C5D69; --rule:#9FB4BF;
+  --land:#F1E4AE; --land-ink:#4A3F0E; --magenta:#A21C78; --magenta-soft:#F3DCEB;
+  --ok:#1F6B4A; --ok-bg:#DDEFE5; --warn:#8A5A00; --warn-bg:#F6E8C8; --maybe:#6B4FA0; --maybe-bg:#E8E1F4; --fam-bg:#DDE6EB;
+  --display:"Libre Caslon Text", "Iowan Old Style", Georgia, serif;
+  --body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --sea:#0E1920; --sea-deep:#16262F; --paper:#182934; --ink:#E7EEF1; --ink-soft:#A3B5BF; --rule:#3D5563;
+  --land:#4B431C; --land-ink:#F0E3A6; --magenta:#EE8AC9; --magenta-soft:#3E2236;
+  --ok:#8FD3B0; --ok-bg:#173A2B; --warn:#EBC46E; --warn-bg:#3D3012; --maybe:#C3B0EE; --maybe-bg:#2C2444; --fam-bg:#22343F;
+  color-scheme: dark } }
+:root[data-theme="dark"]{
+  --sea:#0E1920; --sea-deep:#16262F; --paper:#182934; --ink:#E7EEF1; --ink-soft:#A3B5BF; --rule:#3D5563;
+  --land:#4B431C; --land-ink:#F0E3A6; --magenta:#EE8AC9; --magenta-soft:#3E2236;
+  --ok:#8FD3B0; --ok-bg:#173A2B; --warn:#EBC46E; --warn-bg:#3D3012; --maybe:#C3B0EE; --maybe-bg:#2C2444; --fam-bg:#22343F;
+  color-scheme: dark }
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--sea);color:var(--ink);font:15px/1.55 var(--body);display:flex;flex-direction:column}
+a{color:var(--magenta)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
+
+.wrap{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+header.top{background:var(--paper);border-bottom:1px solid var(--rule)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 28px;padding-block:14px 10px}
+h1{font:400 clamp(22px,3.4vw,30px)/1.15 var(--display);margin:0;text-wrap:balance}
+h1 em{font-style:italic}
+.sub{font:12px/1.4 var(--mono);color:var(--ink-soft);letter-spacing:.02em;margin-top:4px}
+nav.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav.tabs a{padding:6px 12px;border:1px solid transparent;border-radius:3px;text-decoration:none;color:var(--ink-soft);font-weight:600;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-color:var(--ink);background:var(--sea)}
+/* chart-margin graduation */
+.scale{height:7px;background:
+  repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 60px),
+  repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 12px);border-bottom:1px solid var(--ink)}
+
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+section.view{flex:1;min-height:0}
+#tree{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,440px);min-height:0}
+#tree.nodetail{grid-template-columns:minmax(0,1fr)}
+.chartcol{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--rule);background:var(--sea)}
+.toolbar button{background:var(--paper);border:1px solid var(--rule);border-radius:3px;padding:4px 10px;cursor:pointer;font-size:13px}
+.toolbar button:hover{border-color:var(--ink)}
+.toolbar select{max-width:100%;min-height:34px;background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:3px;padding:4px 8px;font:inherit}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-left:auto;font-size:12px;color:var(--ink-soft);align-items:center}
+.legend i{display:inline-block;width:14px;height:10px;border:1px solid var(--rule);vertical-align:-1px;margin-right:5px}
+.legend i.l{background:var(--land)} .legend i.p{background:var(--paper)}
+.scroller{flex:1;min-height:320px;overflow:auto;cursor:grab;background:
+  linear-gradient(var(--sea-deep) 1px,transparent 1px) 0 0/100% 120px,
+  linear-gradient(90deg,var(--sea-deep) 1px,transparent 1px) 0 0/120px 100%, var(--sea)}
+.scroller.drag{cursor:grabbing;user-select:none}
+.sizer{position:relative}
+.canvas{position:absolute;left:0;top:0;transform-origin:0 0}
+.canvas svg{position:absolute;left:0;top:0;pointer-events:none}
+.canvas svg path{fill:none;stroke:var(--rule);stroke-width:1.5}
+.canvas svg path.line{stroke:var(--magenta);stroke-width:2.5}
+.gen{position:absolute;left:8px;font:11px var(--mono);color:var(--ink-soft);letter-spacing:.08em;text-transform:uppercase}
+.card{position:absolute;width:196px;background:var(--paper);border:1px solid var(--rule);border-radius:2px;padding:9px 10px 9px;text-align:left;cursor:pointer;display:flex;gap:9px;align-items:flex-start}
+.card:hover{border-color:var(--ink)}
+.card.line{background:var(--land);color:var(--land-ink);border-color:var(--land-ink)}
+.card.sel{outline:3px solid var(--magenta);outline-offset:1px}
+.card.unknown{border-style:dashed;background:transparent}
+.card img{width:44px;height:54px;object-fit:cover;border:1px solid var(--rule);flex:none;filter:grayscale(.2)}
+.card .t{min-width:0;display:block}
+.card .n{display:block;font:italic 400 15.5px/1.2 var(--display)}
+.card .d{display:block;font:11.5px/1.35 var(--mono);opacity:.85;margin-top:3px}
+.card .r{display:block;font-size:12px;line-height:1.3;margin-top:4px;opacity:.9}
+.card .m{display:block;font-size:12px;line-height:1.3;margin-top:4px;padding-top:4px;border-top:1px dotted currentColor}
+
+aside.detail{background:var(--paper);border-left:1px solid var(--rule);overflow:auto;min-height:0}
+.detail .in{padding:18px 20px 40px;display:flex;flex-direction:column;gap:18px}
+.detail .close{display:none}
+.detail .rel{font:11.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--magenta)}
+.detail h2{font:italic 400 27px/1.15 var(--display);margin:4px 0 2px;text-wrap:balance}
+.detail .dates{font:13px var(--mono);color:var(--ink-soft)}
+.detail .head{display:flex;gap:14px;align-items:flex-start}
+.detail .head img{width:104px;height:130px;object-fit:cover;border:1px solid var(--rule);cursor:zoom-in;flex:none}
+.detail h3{font:600 11.5px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 8px;border-bottom:1px solid var(--rule);padding-bottom:4px}
+.detail p{margin:0 0 10px;max-width:65ch}
+.facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.facts li{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px}
+.facts .when{font:12px/1.6 var(--mono);color:var(--ink-soft)}
+.chip{display:inline-block;font:500 10.5px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:3px 5px;border-radius:2px;margin-left:4px;vertical-align:1px;white-space:nowrap}
+.chip.c{background:var(--ok-bg);color:var(--ok)} .chip.p{background:var(--warn-bg);color:var(--warn)}
+.chip.s{background:var(--maybe-bg);color:var(--maybe)} .chip.f{background:var(--fam-bg);color:var(--ink-soft)}
+sup.ref a{font:11px var(--mono);text-decoration:none;padding:0 1px}
+.kin{display:flex;flex-direction:column;gap:5px;font-size:14px}
+.kin b{font-weight:600;color:var(--ink-soft);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px}
+.kin button{background:none;border:0;padding:0;color:var(--magenta);text-decoration:underline;cursor:pointer;text-align:left}
+.pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+figure{margin:0}
+figure img{width:100%;aspect-ratio:4/3;object-fit:cover;border:1px solid var(--rule);cursor:zoom-in;display:block}
+figcaption{font-size:12px;line-height:1.4;margin-top:5px}
+figcaption small{display:block;color:var(--ink-soft);font-size:11px}
+ol.src{margin:0;padding-left:22px;font-size:12.5px;line-height:1.45;display:flex;flex-direction:column;gap:5px;overflow-wrap:anywhere}
+
+.page{overflow:auto;height:100%}
+.page .wrap{padding-block:26px 60px;max-width:980px;margin:0 auto}
+.page h2{font:400 24px/1.2 var(--display);margin:0 0 6px}
+.page .lede{color:var(--ink-soft);max-width:65ch;margin:0 0 22px}
+.decade{display:grid;grid-template-columns:86px minmax(0,1fr);gap:0 18px;border-top:1px solid var(--rule);padding:14px 0}
+.decade>b{font:400 22px var(--display);color:var(--ink-soft)}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.tl li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px}
+.tl .y{font:13px/1.65 var(--mono);color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.tl li.ctx{color:var(--ink-soft);font-style:italic}
+.tl button{background:none;border:0;padding:0;font-weight:600;color:var(--magenta);cursor:pointer;text-decoration:underline;text-align:left}
+.rs{display:flex;flex-direction:column;gap:30px}
+.rs h3{font:600 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 10px;border-bottom:1px solid var(--rule);padding-bottom:5px}
+.rs ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;max-width:75ch}
+.rs li{overflow-wrap:anywhere}
+.key{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px}
+
+.lightbox{position:fixed;inset:0;background:rgba(8,14,18,.9);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;cursor:zoom-out}
+.lightbox img{max-width:100%;max-height:82vh;object-fit:contain}
+.lightbox p{color:#E7EEF1;font-size:13px;max-width:70ch;text-align:center;margin:0}
+
+@media (max-width: 860px){
+  #tree{grid-template-columns:minmax(0,1fr)}
+  aside.detail{position:fixed;inset:0;z-index:30;border-left:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  aside.detail .in{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+  .detail .close{display:block;position:sticky;top:0;z-index:2;width:100%;background:var(--paper);border:0;border-bottom:1px solid var(--rule);padding:12px 16px;text-align:left;font-weight:600;cursor:pointer}
+  .legend{margin-left:0;width:100%}
+  .toolbar select{width:100%;font-size:16px}
+  .toolbar button{min-height:38px}
+  .decade{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: no-preference){ .scroller{scroll-behavior:auto} }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div>
+      <h1 id="h1"></h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <nav class="tabs" aria-label="Views">
+      <a href="#tree">Tree</a><a href="#timeline">Timeline</a><a href="#research">Research log</a>
+    </nav>
+  </div>
+  <div class="scale" aria-hidden="true"></div>
+</header>
+
+<main>
+  <section class="view" id="tree">
+    <div class="chartcol">
+      <div class="toolbar">
+        <select id="person-picker" aria-label="Find a person">
+          <option value="">Find a person</option>
+        </select>
+        <button id="zout" aria-label="Zoom out">−</button>
+        <button id="zin" aria-label="Zoom in">+</button>
+        <button id="zfit">Fit all</button>
+        <button id="zline">Follow the direct line</button>
+        <div class="legend"><span><i class="l"></i>Direct line</span><span><i class="p"></i>Relatives</span><span>Select anyone to read their record</span></div>
+      </div>
+      <div class="scroller" id="scroller"><div class="sizer" id="sizer"><div class="canvas" id="canvas"></div></div></div>
+    </div>
+    <aside class="detail" id="detail" aria-live="polite"></aside>
+  </section>
+  <section class="view page" id="timeline" hidden><div class="wrap" id="tlwrap"></div></section>
+  <section class="view page" id="research" hidden><div class="wrap" id="rswrap"></div></section>
+</main>
+
+<script>
+window.FAMILY = {"title": "The Jones family, <em>Jamaica to the London Docks<\/em>", "subtitle": "Historical records and family research", "start": "archimedes", "generations": ["I", "II", "III", "IV", "V", "VI", "VII"], "people": [{"id": "joseph", "name": "Joseph Jones", "born": "c.1790?", "line": true, "role": "Merchant", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "The Olney household and the Jamaican evidence", "url": "research/herbert-jones-review.html"}], "facts": [{"d": "1851", "t": "The family sheet identifies Joseph as the merchant named as father on Archimedas’s marriage certificate. The sheet questions the estimated birth year. The certificate itself is still needed.", "c": "f", "s": [1]}]}, {"id": "archimedes", "parent": "joseph", "name": "Archimedes Jones", "born": "c.1816", "line": true, "role": "Steward of the Sailors' Home", "spouses": [{"name": "Sarah Herbert"}], "facts": [{"d": "1851", "t": "Married Sarah Herbert on 7 October at St Mary, Whitechapel. Both gave Dock Street addresses. The sheet names William Partridge and Mary Ann Herbert as witnesses.", "c": "f", "s": [1], "y": 1851}, {"d": "1891", "t": "At the Sailors’ Home on Well and Dock Streets. The census transcription records Archimedes Jones, 75, widowed, a steward born in Jamaica. The workplace, occupation and age match the family sheet. Sarah’s exact death date remains open.", "c": "c", "s": [2, 1], "y": 1891}, {"d": "1852–1873", "y": 1852, "t": "Three further candidates appear in baptism index searches under father Archimedes: Sarah Matilda, Margaret Agnes and Francis George. The parents’ names are masked in the baptism results. Corresponding civil birth and death entries fit 1852–1861, 1859–1881 and 1871–1873. A fourth candidate, Herbert Archimedes (birth Whitechapel 1c/352, death as Archimedus 1c/251, 1855–56), needs a record naming his parents. Full baptism or birth entries are needed to establish each mother and the total number of children.", "c": "p", "s": [3, 4, 5]}, {"d": "Reported Jamaican baptism, 1822", "y": 1822, "t": "A researcher transcribed a St Elizabeth baptism dated 10 October 1822 for Archimedes Jones, born 27 September 1815. The name, birthplace and age fit the London steward in 1891. The report says the entry omits his parents. The date and Jamaican parentage require the original register or another record linking the households.", "c": "p", "s": [6, 7, 2]}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeCEN, Whitechapel, 1891, RG12/283, folio 127, page 1", "url": "https://www.freecen.org.uk/search_records/59289624e937906e9ff06fe9/archimedes-jones-1891-london-city-whitechapel-1816-"}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "London baptisms, index search for father Archimedes Jones", "url": "https://www.ancestry.co.uk/search/collections/1558/?father=Archimedes_Jones&father_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "FamilySearch, Jamaican parish register index", "url": "https://www.familysearch.org/ark:/61903/1:1:VH6X-71T"}, {"t": "RootsChat, researchers’ account of the register", "url": "https://www.rootschat.com/forum/index.php?topic=749260.0"}, {"t": "The Olney household and the Jamaican evidence", "url": "research/herbert-jones-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}]}, {"id": "alice", "parent": "archimedes", "name": "Alice Mary Ann Jones", "born": "1853", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "London baptisms, index search for father Archimedes Jones", "url": "https://www.ancestry.co.uk/search/collections/1558/?father=Archimedes_Jones&father_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}], "facts": [{"d": "1881", "t": "Page 1 lists this child in Sarah’s household at 18A Arbour Square, with no occupation stated. The household census image remains to be checked.", "c": "f", "s": [1], "y": 1881}, {"d": "Birth registration, 1853", "y": 1853, "t": "Oct–Dec 1853, Whitechapel, volume 1c, page 372. The name, district and approximate age fit the family sheet. A London baptism index search under father Archimedes returns the corresponding child.", "c": "p", "s": [1, 2, 3, 4]}]}, {"id": "charles", "parent": "archimedes", "name": "Charles Henry Jones CBE", "born": "1857", "died": "1936", "line": true, "role": "Registrar General of Shipping and Seamen", "spouses": [{"name": "Isabel Andrews (also Isobel in the family papers)"}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "Who’s Who, 1920, Charles Henry Jones entry", "url": ""}, {"t": "London Gazette, printed CBE entry", "url": ""}, {"t": "1936 probate calendar, Charles Henry Jones", "url": ""}, {"t": "1948 probate calendar, Isabel Jones", "url": ""}, {"t": "Evening Post, 16 October 1926, Women in Print", "url": "https://paperspast.natlib.govt.nz/newspapers/EP19261016.2.148"}, {"t": "Charles Douglas casualty details, CWGC-derived listing", "url": "https://astreetnearyou.org/person/170545/Corporal---Crompton"}, {"t": "The Panama American, 27 June 1945", "url": "https://ufdc.ufl.edu/AA00010883/05684"}, {"t": "The Marine Engineer, November 1913, appointment notice", "url": ""}, {"t": "Board of Trade Journal, 1921, successor notice", "url": ""}, {"t": "1871 census, Limehouse, RG10/553, page 39, schedule 195", "url": "https://www.freecen.org.uk/search_records/62bff566f493fdf9f7a3d21f/isabel-andrews-1871-london-city-limehouse-1862-"}, {"t": "Charles Henry and Isabel Andrews", "url": "research/andrews-review.html"}], "facts": [{"d": "1857", "t": "Both family sheets give 31 March at 3 East Tenter Street, Whitechapel. Page 1 names his parents as Archimedas Jones and Sarah Herbert. The biographical entry independently agrees on the birth year.", "c": "f", "s": [1, 2, 3], "y": 1857}, {"d": "1883", "t": "His biographical entry identifies his wife as Isabel, daughter of John Andrews, and gives 1883 as their marriage year. Page 2 supplies 25 October. William Andrews appears there as a witness.", "c": "c", "s": [3, 2], "y": 1883}, {"d": "1913–18", "t": "Named Registrar General of Shipping and Seamen from 1913. His biographical entry and the Gazette identify his CBE in 1918.", "c": "c", "s": [3, 4], "y": 1918}, {"d": "1936–47", "t": "The 1936 calendar identifies widow Isabel and 1c Nevern Square. Her 1948 probate entry records death on 5 November 1947 at Wallingford and names Isabel Margaret Braund. Both match the family sheet.", "c": "c", "s": [5, 6, 2], "y": 1936}, {"d": "1926", "t": "Theodore’s engagement notice identifies his father by initials, CBE and office. It describes Theodore as his eldest surviving son, consistent with Charles Douglas’s death in 1916.", "c": "c", "s": [7, 8], "y": 1926}, {"d": "1945", "t": "The Panama paper reports Mrs C. H. Jones returning to England after several years with her son and daughter-in-law, Captain and Mrs T. Warren Jones. Her death at Wallingford in 1947 fits that return.", "c": "c", "s": [9, 6], "y": 1945}, {"d": "1873–1901", "y": 1873, "t": "Privately educated, he placed fourth in the 1873 competitive examination and entered the shipping registry as a third-class clerk. He advanced to staff clerk in 1891 and assistant to the Registrar General in 1901. He listed literature as his recreation.", "c": "c", "s": [3]}, {"d": "1913", "y": 1913, "t": "Succeeded H. N. Malan after forty years in the department. The appointment notice describes him as the first member of staff promoted to lead it.", "c": "c", "s": [10, 3]}, {"d": "1921", "y": 1921, "t": "The Board of Trade appointed John Blake Harrold MBE to succeed him. His later address, 1c Nevern Square, differs from the 11 Emperor’s Gate address listed in Who’s Who.", "c": "c", "s": [11, 3, 5]}, {"d": "Isabel’s childhood, 1871", "y": 1871, "t": "A likely match at 74 Cotton Street, Limehouse, is Isabel Andrews, 9, born Mile End. Her father John T. Andrews, 44, was a Customs gauger born in Shadwell. His wife Sarah A., 38, was born in St George in the East. Children John, William, Kate, Arthur, Frank and Annie and an aunt, Ann Potter, were also present. The father’s name and William fit the wedding evidence. The original marriage record or Isabel’s birth record would test this identification.", "c": "p", "s": [12, 3, 2]}]}, {"id": "ernest", "parent": "archimedes", "name": "Ernest Augustus Jones", "born": "1860", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "London baptisms, index search for father Archimedes Jones", "url": "https://www.ancestry.co.uk/search/collections/1558/?father=Archimedes_Jones&father_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}], "facts": [{"d": "1881", "t": "Page 1 lists this child in Sarah’s household at 18A Arbour Square, with shipbroker’s clerk. The household census image remains to be checked.", "c": "f", "s": [1], "y": 1881}, {"d": "Birth registration, 1860", "y": 1860, "t": "Oct–Dec 1860, Whitechapel, volume 1c, page 409. The name, district and approximate age fit the family sheet. A London baptism index search under father Archimedes returns the corresponding child.", "c": "p", "s": [1, 2, 3, 4]}, {"d": "1882", "y": 1882, "t": "Ernest Augustus Jones and Katherine Mingay Smith appear on the same Islington marriage index page, Jan–Mar 1882, 1b/366. The parish marriage index identified in the recovered notes names his father Archimedes and pairs the couple.", "c": "p", "s": [2, 4]}], "spouses": [{"name": "Katherine Mingay Smith", "when": "1882, Islington registration district"}]}, {"id": "grace", "parent": "archimedes", "name": "Grace Emily Jones", "born": "c.1863", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "London baptisms, index search for father Archimedes Jones", "url": "https://www.ancestry.co.uk/search/collections/1558/?father=Archimedes_Jones&father_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}], "facts": [{"d": "1881", "t": "Page 1 lists this child in Sarah’s household at 18A Arbour Square, with draper’s assistant. The household census image remains to be checked.", "c": "f", "s": [1], "y": 1881}, {"d": "Birth registration, 1863", "y": 1863, "t": "Jan–Mar 1863, St George in the East, volume 1c, page 482. The name, district and approximate age fit the family sheet. A London baptism index search under father Archimedes returns the corresponding child.", "c": "p", "s": [1, 2, 3, 4]}]}, {"id": "william", "parent": "archimedes", "name": "William Edward Joseph Jones", "born": "c.1866", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "1911 census index, children of William Jones and Ethel Susie", "url": "https://www.ancestry.co.uk/search/collections/2352/?name=_Jones&father=William_Jones&mother=Ethel+Susie_Jones&mother_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}, {"t": "1944 probate calendar, page 809", "url": "https://probatesearch.service.gov.uk/api/csp/nxfile/default/84c46614-db13-45e5-8f5f-8c0b57326291/file:content/003142_jones_1944.pdf"}], "facts": [{"d": "1881", "t": "Page 1 lists this child in Sarah’s household at 18A Arbour Square, with tea merchant’s clerk. The household census image remains to be checked.", "c": "f", "s": [1], "y": 1881}, {"d": "Birth registration, 1866", "y": 1866, "t": "Jan–Mar 1866, St George in the East, volume 1c, page 443. The name, district and approximate age fit the family sheet. The birth index uses initials E J. The 1911 census index expands his name and identifies his wife and sons.", "c": "p", "s": [1, 2, 3, 4]}, {"d": "1898–1911", "y": 1898, "t": "William Edward J. Jones and Ethel Susie Corby share a marriage index page, West Ham, Apr–Jun 1898, 4a/79. The 1911 census index names William Edward Joseph and Ethel Susie as the parents of Horace, Eric and Harold. Horace’s middle name preserves his mother’s surname.", "c": "p", "s": [2, 3, 4]}, {"d": "1944", "y": 1944, "c": "c", "s": [6], "t": "Lived at 80 Porthpean Road and died on 23 May at St Austell District Hospital. The 10 August probate grant at Llandudno names his widow Ethel Susy Jones. The names of both spouses distinguish him from the other death candidate."}], "spouses": [{"name": "Ethel Susie Corby", "when": "1898, West Ham registration district"}], "died": "1944"}, {"id": "fanny", "parent": "archimedes", "name": "Fanny Elizabeth Jones", "born": "1868", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "London baptisms, index search for father Archimedes Jones", "url": "https://www.ancestry.co.uk/search/collections/1558/?father=Archimedes_Jones&father_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}], "facts": [{"d": "1881", "t": "Page 1 lists this child in Sarah’s household at 18A Arbour Square, with scholar. The household census image remains to be checked.", "c": "f", "s": [1], "y": 1881}, {"d": "Birth registration, 1868", "y": 1868, "t": "Oct–Dec 1868, St George in the East, volume 1c, page 433. The name, district and approximate age fit the family sheet. The baptism index transcription “Henry Elizabeth” needs inspection of the original handwriting.", "c": "p", "s": [1, 2, 3, 4]}]}, {"id": "horace", "parent": "william", "name": "Horace Corby Jones", "born": "c.1899", "facts": [{"d": "1899–1911", "y": 1899, "t": "Birth registered Oct–Dec 1899, West Ham, 4a/268. Appears as a son in the 1911 census index with parents William Edward Joseph and Ethel Susie. An older brother to Eric Stephen and Harold Edward.", "c": "p", "s": [1, 2, 3]}], "sources": [{"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "1911 census index, children of William Jones and Ethel Susie", "url": "https://www.ancestry.co.uk/search/collections/2352/?name=_Jones&father=William_Jones&mother=Ethel+Susie_Jones&mother_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}]}, {"id": "eric", "parent": "william", "name": "Eric Stephen Jones", "born": "1904", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "1911 census index, children of William Jones and Ethel Susie", "url": "https://www.ancestry.co.uk/search/collections/2352/?name=_Jones&father=William_Jones&mother=Ethel+Susie_Jones&mother_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}], "facts": [{"d": "1904", "t": "Page 1 identifies William as father of twins Eric Stephen and Harold Edward. The handwritten 1992 death annotation does not securely identify which twin died.", "c": "f", "s": [1], "y": 1904}, {"d": "1904–1911", "y": 1904, "t": "Birth registered in Romford, Jan–Mar 1904, 4a/572. The 1911 census index places him with William Edward Joseph and Ethel Susie, and the family papers identify the brothers as twins.", "c": "p", "s": [2, 3, 1, 4]}]}, {"id": "harold", "parent": "william", "name": "Harold Edward Jones", "born": "1904", "sources": [{"t": "Jones family sheet, 6 January 2000, page 1", "url": ""}, {"t": "FreeBMD, civil registration indexes", "url": "https://www.freebmd2.org.uk/search_queries/new"}, {"t": "1911 census index, children of William Jones and Ethel Susie", "url": "https://www.ancestry.co.uk/search/collections/2352/?name=_Jones&father=William_Jones&mother=Ethel+Susie_Jones&mother_x=1"}, {"t": "Victorian sibling evidence review and index references", "url": "research/siblings-review.html"}, {"t": "The Victorian siblings and their children", "url": "research/siblings-review.html"}], "facts": [{"d": "1904", "t": "Page 1 identifies William as father of twins Eric Stephen and Harold Edward. The handwritten 1992 death annotation does not securely identify which twin died.", "c": "f", "s": [1], "y": 1904}, {"d": "1904–1911", "y": 1904, "t": "Birth registered in Romford, Jan–Mar 1904, 4a/571. The 1911 census index places him with William Edward Joseph and Ethel Susie, and the family papers identify the brothers as twins.", "c": "p", "s": [2, 3, 1, 4]}, {"d": "Possible death, 1992", "y": 1992, "t": "The Wandsworth death registration, volume 15 page 1039, gives a birth date of 22 February 1904 for Harold Edward Jones. The family reported one twin died in 1992. The district and name alone would not identify him, and his birth entry has yet to confirm the exact day.", "c": "p", "s": [2, 1, 4]}]}, {"id": "cdj", "parent": "charles", "name": "Charles Douglas Jones", "born": "1884", "died": "1916", "role": "Lieutenant, King’s Own Yorkshire Light Infantry", "spouses": [{"name": "Constance Isabella Stamp"}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "Cambrin Churchyard Extension casualty roll, Charles Douglas Jones", "url": "https://astreetnearyou.org/cemetery/16800/CAMBRIN-CHURCHYARD-EXTENSION"}, {"t": "Cambrin casualty details reproduced from CWGC", "url": "https://astreetnearyou.org/person/170545/Corporal---Crompton"}, {"t": "Friends of Hastings Cemetery, Stamp family history", "url": "https://friendsofhastingscemetery.org.uk/stampeb.html"}, {"t": "Sevenoaks war memorial gallery", "url": "https://sevenoaksww1.org/war-memorial-gallery/"}], "facts": [{"d": "1916", "t": "The cemetery roll lists Lieutenant Charles Douglas Jones, aged 32, of the regiment named on page 2, dying on 28 October. The sheet gives the regiment and year. Claude’s transcription supplied 1 July in error.", "c": "c", "s": [1, 2], "y": 1916}, {"d": "1916", "t": "The casualty entry identifies his father by his distinctive office and Constance Isabella, née Stamp, as his wife at Sevenoaks. Those details corroborate the 28 October death date and distinguish him from other officers named Jones.", "c": "c", "s": [3, 1], "y": 1916}, {"d": "Stamp family", "t": "The Friends of Hastings Cemetery identifies Constance as a daughter of Ernest Blatspiel Stamp and Frances. The family lived at Sevenoaks. Her brother Douglas Blatspiel Stamp served with the East Yorkshire Regiment and appears on the town memorial.", "c": "p", "s": [4, 5]}]}, {"id": "douglas", "parent": "cdj", "name": "Douglas Brisbane-Jones-Stamp", "born": "1917", "died": "1975", "spouses": [{"name": "Marion Monro", "note": "The family sheet uses Arethusa. The regimental appreciation calls her Tush."}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "The Iron Duke, October 1942, engagement notice", "url": "https://www.dwr.org.uk/wp-content/uploads/ID-053-1942-10.pdf"}, {"t": "The Iron Duke, December 1975, obituary", "url": "https://www.dwr.org.uk/wp-content/uploads/ID-169-1975-12.pdf"}, {"t": "The Iron Duke, August 1976, appreciation, p. 71", "url": "https://www.dwr.org.uk/wp-content/uploads/ID-171-1976-08.pdf"}, {"t": "The Iron Duke, August 1975, headquarters news", "url": "https://www.dwr.org.uk/wp-content/uploads/ID-168-1975-08.pdf"}, {"t": "The Iron Duke, February 1943, marriage notice", "url": "https://www.dwr.org.uk/wp-content/uploads/ID-054-1943-02.pdf"}, {"t": "Oxford Dictionary of National Biography, Hector Monro", "url": "https://academic.oup.com/oxford-dictionary-of-national-biography/reference/63486/reference-article-abstract/581193560"}], "facts": [{"d": "1917", "t": "The regimental obituary gives February 1917. The 1942 engagement identifies Captain Douglas Jones-Stamp as the only son of the late Charles Douglas Jones and names Marion Monro. These identifiers connect the soldier to page 2.", "c": "c", "s": [1, 2, 3], "y": 1917}, {"d": "1943–45", "t": "Reached Italy in December 1943, was wounded at Anzio and later captured. His regiment places him in Oflag 79 until April 1945. The sheet’s 1941 start conflicts with this service chronology.", "c": "c", "s": [4, 1], "y": 1945}, {"d": "1975", "t": "Died on 20 October in hospital in Carlisle, ten years later than the family sheet records. His regiment had reported his departure as assistant regimental secretary that August.", "c": "c", "s": [3, 5, 1], "y": 1975}, {"d": "Monro family", "t": "The regimental marriage notice identifies Marion as the only daughter of Captain Alastair Monro of Craigcleuch. The Oxford biographical account of her brother Hector identifies the parents as Ian Alastair Seymour Hale Monro and Marion Frances Ewart. Her maternal grandfather was Lieutenant-General Sir John Spencer Ewart.", "c": "p", "s": [6, 7]}]}, {"id": "twj", "parent": "charles", "name": "Theodore Warren Jones", "born": "1887", "line": true, "role": "Commander, RNR (retired list)", "spouses": [{"name": "Airlie May Morris", "when": "16 December 1926", "life": "1895–1977"}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "London Gazette, January 1918, p. 380", "url": "https://www.thegazette.co.uk/London/issue/30460/supplement/380"}, {"t": "London Gazette, November 1927, p. 7665", "url": ""}, {"t": "Family message accompanying the sheets", "url": ""}, {"t": "Alexander Turnbull Library, Arawa passenger list", "url": "https://natlib.govt.nz/records/22366215"}, {"t": "The Panama American, 17 December 1926, p. 10", "url": "https://ufdc.ufl.edu/AA00010883/03687"}, {"t": "Don Ferguson, transcription of the GRO birth index for Theodore Warren Jones", "url": "https://www.fergusontree.com/p191.htm"}, {"t": "Family marriage certificate, signed by the bishop", "url": ""}, {"t": "Original service-book photograph", "url": ""}, {"t": "The Panama American, 17 December 1926", "url": "https://ufdc.ufl.edu/AA00010883/03687"}, {"t": "Evening Post, 16 October 1926, Women in Print", "url": "https://paperspast.natlib.govt.nz/newspapers/EP19261016.2.148"}, {"t": "New Zealand historical index 1895/6219", "url": "research/NZ historical register entries.html#r1895-6219"}, {"t": "New Zealand historical index 1892/3884", "url": "research/NZ historical register entries.html#r1892-3884"}, {"t": "New Zealand historical index 1978/26930", "url": "research/NZ historical register entries.html#r1978-26930"}, {"t": "Airlie May Morris and her ancestors", "url": "research/Morris and earlier families.html"}, {"t": "Family clipping of the 1946 departure report", "url": "https://ufdc.ufl.edu/AA00010883/05967"}, {"t": "The Panama American, 11 January 1946, departure for New Zealand", "url": "https://ufdc.ufl.edu/AA00010883/05967"}, {"t": "New Zealand historical index 1960/33816", "url": "research/NZ historical register entries.html#r1960-33816"}, {"t": "1868 marriage announcement for William Dymock and Mary Eliza Bell", "url": "https://trove.nla.gov.au/newspaper/article/113835100"}, {"t": "William Dymock’s probate calendar, 1912", "url": "https://probatesearch.service.gov.uk/api/csp/nxfile/default/d8b25757-7b3c-48e0-9568-f923f71fd912/file:content/000599_dykes_1912.pdf"}, {"t": "William Dymock’s obituary in the Otago Witness", "url": "https://paperspast.natlib.govt.nz/newspapers/OW19120313.2.187"}], "facts": [{"d": "1887", "y": 1887, "t": "Don Ferguson cites the Greenwich birth index, September quarter 1887, volume 1d, page 1043, with mother’s maiden name Andrews. Name, district, quarter and maternal surname match page 2. The certificate would identify both parents by name.", "c": "p", "s": [1, 7]}, {"d": "1918", "t": "The wartime honours list names Theodore Warren Jones as acting lieutenant-commander. The later Admiralty notice gives his postnominals OBE and RD.", "c": "c", "s": [2, 3, 4], "y": 1918}, {"d": "1926", "t": "Listed in command of RMS Arawa on the April passage from Southampton via Panama to Wellington. The December wedding report identifies Captain Theodore Warren Jones and Wellington’s Airlie Morris. They married at St Luke’s Cathedral on 16 December.", "c": "c", "s": [5, 6, 1], "y": 1926}, {"d": "1927", "t": "Placed on the Royal Naval Reserve retired list as Commander effective 21 November. This establishes when the rank remembered in the family message applied.", "c": "c", "s": [3, 4], "y": 1927}, {"d": "1926", "t": "The certificate names both spouses in full, gives the Cathedral of St. Luke in Ancon and bears the signature Jas. Craik Morris, Bishop of the Panama Canal Zone. The accompanying service-book photograph has no visible names. Its association with this couple comes from the family collection.", "c": "c", "s": [8, 9, 10], "y": 1926}, {"d": "Parents", "t": "The Wellington engagement announcement calls Theodore the eldest surviving son of C. H. Jones, former Registrar General, and Airlie the elder daughter of George M. Morris of Wellington. The officer’s name, father’s office and bride independently connect two households.", "c": "c", "s": [11, 8]}, {"d": "1895–1977", "t": "Airlie’s New Zealand birth entry names George Moodie and Margaret Helen Mary. Her parents’ marriage gives the surname Dymock. The date-filtered registers place Airlie’s birth on 8 March 1895 and death on 21 December 1977. Her 1978 death registration gives a conflicting birth year of 1893.", "c": "c", "s": [12, 13, 14, 15]}, {"d": "1946", "t": "The departure notice names his children Betty and Warren and his wife’s mother, Mrs George Morris. The family clipping and the archived issue preserve the same report.", "c": "c", "s": [16, 17], "y": 1946}, {"d": "1960", "t": "New Zealand registered his death at a reported age of 74. A birth in 1887 would make him 72 or 73.", "c": "c", "s": [18, 11], "y": 1960}, {"d": "Airlie’s grandparents", "y": 1868, "c": "p", "s": [19, 20, 21], "t": "The Sydney marriage notice identifies Airlie’s likely maternal grandmother as Mary Eliza Bell, daughter of Edward Bell, civil engineer. William Dymock’s probate names Mary Eliza as his widow and his obituary identifies Airlie’s mother, Mrs George Morris, as his daughter."}], "died": "1960", "bio": ["<a href=\"research/Morris and earlier families.html\">Follow Airlie’s Morris, Dymock, Moodie and earlier Scottish lines<\/a>.", "<a href=\"research/Morris and earlier families.html#daisy\">Read about Airlie’s Dymock and Bell ancestors<\/a>."]}, {"id": "warren", "parent": "twj", "name": "Warren Theodore Jones", "born": "1927", "line": true, "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "Family message accompanying the sheets", "url": ""}, {"t": "New Zealand Herald, family notice, 5 January 2022", "url": ""}, {"t": "New Zealand historical index 2022/605", "url": "research/NZ historical register entries.html#r2022-605"}, {"t": "Family clipping of the 1946 departure report", "url": "https://ufdc.ufl.edu/AA00010883/05967"}, {"t": "The Panama American, 11 January 1946, departure for New Zealand", "url": "https://ufdc.ufl.edu/AA00010883/05967"}, {"t": "Union shipping magazine, Linkspan, December 1984", "url": "https://pubhtml5.com/hhtj/juhq/basic/"}, {"t": "Company-director index, Owens Ships 5700", "url": "https://www.companiesnz.com/person/119896/owens-ships-5700-limited"}], "died": "2021", "facts": [{"d": "2021", "t": "The New Zealand historical register records his death on 31 December 2021.", "c": "c", "s": [4], "y": 2021}, {"d": "1927", "t": "The death register records his birth as 31 December 1927, supporting the photographed family sheet. The exact-date search also places his death on 31 December 2021, his 94th birthday. The birthplace remains open.", "c": "c", "s": [4, 1], "y": 1927}, {"d": "1946", "t": "Named with his sister Betty as one of Captain and Mrs T. Warren Jones’s children in the Panama newspaper.", "c": "c", "s": [5, 6], "y": 1946}, {"d": "1984", "t": "A Union shipping staff magazine identifies Warren Jones as Owens Group general manager of shipping at a Wellington farewell. A company-director index lists Warren Theodore Jones at Owens Ships 5700. Employer, name and city support the identification.", "c": "p", "s": [7, 8], "y": 1984}], "bio": ["<a href=\"research/Morris and earlier families.html\">Read the family evidence and follow the maternal line<\/a>."]}, {"id": "betty", "parent": "twj", "name": "Elizabeth Airlie “Betty” Jones", "born": "1929", "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "Don Ferguson, Elizabeth Airlie Jones", "url": "https://www.fergusontree.com/p190.htm"}, {"t": "The Panama American, 19 July 1929", "url": "https://ufdc.ufl.edu/AA00010883/04785"}, {"t": "The Panama American, 19 July 1944", "url": "https://ufdc.ufl.edu/AA00010883/05064"}, {"t": "The Panama American, 14 January 1952", "url": "https://ufdc.ufl.edu/AA00010883/01354"}, {"t": "New Zealand historical index 2006/5183", "url": "research/NZ historical register entries.html#r2006-5183"}, {"t": "Ferguson, NZ marriage and death references", "url": "https://www.fergusontree.com/p190.htm"}], "facts": [{"d": "1929–44", "t": "The 1929 paper announces the birth of Theodore and Airlie’s daughter at Panama Hospital on 17 July. The 1944 paper calls her Betty and describes her fifteenth birthday at her parents’ home. The family sheet has 1930.", "c": "c", "s": [3, 4, 1], "y": 1929}, {"d": "1952–2006", "t": "Her parents’ engagement notice names Elizabeth and Dr William Wilson of Lower Hutt and announces a February wedding in Paihia. The NZ death entry for Elizabeth Airlie Wilson records 17 July 1929. The reported middle name Johnstone for William is from Ferguson’s marriage-index reference.", "c": "c", "s": [5, 6, 7], "y": 1952}], "died": "2006", "spouses": [{"name": "William Johnstone Wilson"}], "bio": ["<a href=\"research/Morris and earlier families.html\">Read the family evidence and follow the maternal line<\/a>."]}, {"id": "hmj", "parent": "charles", "name": "Henry Montagu Jones", "born": "1891", "died": "1936", "spouses": [{"name": "Ethel Threlfall, née Paley"}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "Hartpury, Gloucestershire, memorial inscription A76", "url": "https://places.wishful-thinking.org.uk/GLS/Hartpury/MIs.html"}, {"t": "St George, Preston, baptism register, page 25, entry 194", "url": "https://www.lan-opc.org.uk/Preston/Preston/stgeorge/baptisms_1865-1901.html"}, {"t": "National Archives, divorce file J 77/1266/8590", "url": "https://discovery.nationalarchives.gov.uk/details/r/C8011865"}, {"t": "Recovered research, including marriage index transcription", "url": ""}], "facts": [{"d": "Family sheet", "t": "Page 2 gives 8 December 1891 at 61 St Donatt’s Road and reports death in Costa Rica in June 1936. The Marylebone marriage location carries a question mark.", "c": "f", "s": [1]}, {"d": "Paley family", "t": "At Hartpury the family memorial calls Ethel the widow of Henry Montague Jones of San Jose, Costa Rica, and a daughter of George and Agnes Paley of Preston. This independently connects her maiden name, parents, husband and his home city. His June 1936 death is still family-reported.", "c": "c", "s": [2, 3, 1]}, {"d": "1883–1952", "t": "Ethel was baptised on 12 December 1883 at St George, Preston. George was a manufacturer at 15 Ribblesdale Place. Mabel’s earlier baptism gives the same parents and address. The Hartpury memorial calls Ethel the younger daughter and gives her death as 27 April 1952 aged 68.", "c": "c", "s": [2, 3]}, {"d": "1916–17", "t": "The National Archives identifies Sydney Threlfall as petitioner, Ethel Threlfall as respondent and Henry Montague Jones as co-respondent. Claude recorded the subsequent Jones–Threlfall marriage in Kensington, September quarter 1917, 1a 477. That district differs from the tentative Marylebone on the family sheet.", "c": "p", "s": [4, 5], "y": 1917}]}, {"id": "barbara", "parent": "hmj", "name": "Isabel Barbara Jones", "born": "1917", "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "Hartpury, Gloucestershire, memorial inscription A76", "url": "https://places.wishful-thinking.org.uk/GLS/Hartpury/MIs.html"}, {"t": "1917 birth index transcription, St George Hanover Square 1a 478", "url": ""}], "facts": [{"d": "Family sheet", "t": "Page 2 gives 14 October 1916 and questions Streatham as the birthplace.", "c": "f", "s": [1]}, {"d": "1917–75", "t": "The memorial names Barbara as elder daughter of Ethel and Henry Montague Jones and wife of Dr James Wood. It gives 14 October 1917 and 11 October 1975. The family sheet is one year early. The December-quarter 1917 Jones birth entry with mother Paley supplies a second check.", "c": "c", "s": [2, 3, 1], "y": 1975}], "died": "1975", "spouses": [{"name": "Dr James Wood"}]}, {"id": "pam", "parent": "hmj", "name": "Mary Pamela Jones", "born": "1919", "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}], "facts": [{"d": "Family sheet", "t": "Page 2 gives 4 March 1919 at Cruive Cottage, Alness. A Scottish birth entry naming both parents would test this branch.", "c": "f", "s": [1]}]}, {"id": "imj", "parent": "charles", "name": "Isobel Margaret Jones", "born": "1896", "spouses": [{"name": "Sir Henry Benedict Linthwaite Braund"}], "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "1948 probate calendar, Isabel Jones", "url": ""}, {"t": "Braund Society museum catalogue, royal funeral invitation", "url": "https://www.braundsociety.org/museum-catalogue"}, {"t": "British Library, Mss Eur D792", "url": "https://searcharchives.bl.uk/catalog/032-002274447"}, {"t": "Lincoln’s Inn admissions register, 10 March 1920", "url": "https://archive.org/details/VOL318941956"}, {"t": "Braund Society wills catalogue", "url": "https://www.braundsociety.org/wills"}], "facts": [{"d": "1948", "t": "Her mother’s probate entry identifies Isabel Margaret Braund and gives her husband’s full name. The Braund Society independently catalogues the couple together and gives her maiden name as Jones.", "c": "c", "s": [1, 2, 3], "y": 1948}, {"d": "Braund family", "t": "Sir Henry’s papers document his service as a judge in Rangoon from 1934 to 1939 and his chairmanship of the Bengal Foodgrains Procurement Committee in 1944. His Lincoln’s Inn entry identifies his father Marwood Leonard Boyd Braund, a solicitor. Lizzie Braund née Linthwaite of Sidcup is a maternal candidate in the Braund Society’s wills index. A record naming her and Henry together is needed.", "c": "p", "s": [4, 5, 6]}]}, {"id": "elizabeth", "parent": "imj", "name": "Elizabeth Margaret Braund MBE", "born": "1921", "sources": [{"t": "Jones family sheet, 6 January 2000, page 2", "url": ""}, {"t": "1948 probate calendar, Isabel Jones", "url": ""}, {"t": "Robert Musgrave, Elizabeth Braund, July 2013", "url": "https://www.e-n.org.uk/uk-news/2013-07-elizabeth-braund-1921-2013/"}], "died": "2013", "facts": [{"d": "1921–2013", "t": "Robert Musgrave’s obituary identifies Elizabeth Margaret Braund as the only child of Sir Henry and Lady Margaret Braund. It places her birth in Kensington in 1921 and death on 20 May 2013. The named parents resolve the question mark beside Elizabeth on page 2.", "c": "c", "s": [1, 2, 3], "y": 2013}]}], "images": [], "context": [], "notes": {"intro": "Public edition of the Jones family tree. Follow the archive links and branch reports to compare the historical records.", "found": ["<a href=\"research/Morris and earlier families.html#daisy\">The Dymock and Bell branch<\/a> now includes the Sydney marriage notice, both Dymock probate entries, William’s obituary and Edward Bell’s career.", "The 1891 census places Archimedes at the Sailors’ Home as a widowed steward born in Jamaica.", "The Panama wedding report and the Admiralty retirement notice identify Theodore independently of the family message.", "Regimental notices connect Douglas to Charles Douglas by name. Probate and an obituary connect three generations of the Andrews, Jones and Braund family.", "<a href=\"research/Morris and earlier families.html\">Read Airlie’s ancestry, from the New Zealand registrations to the Scottish parish leads<\/a>.", "Civil indexes and census searches expand five Victorian siblings’ names. William Edward Joseph Jones’s family includes Ethel Susie Corby and their three sons, Horace Corby and the twins Eric Stephen and Harold Edward. Charles Henry’s profile also contains the 1913 appointment notice and the 1921 notice naming his successor.", "<a href=\"research/herbert-jones-review.html\">The Olney household and the Jamaican evidence<\/a>", "<a href=\"research/andrews-review.html\">Charles Henry and Isabel Andrews<\/a>", "<a href=\"research/siblings-review.html\">The Victorian siblings and their children<\/a>"], "corrections": ["Douglas died in October 1975. His captivity began after the move to Italy in December 1943.", "The earlier transcription assigned Charles Douglas to 1 July 1916. The cemetery roll gives 28 October.", "Warren’s death registration gives 31 December 1927 as his birth. Betty’s Panama birth announcement and NZ death record agree on 17 July 1929.", "Airlie died on 21 December 1977. The 1978 prefix on her death registration is the registration year.", "Barbara’s family memorial and the quarterly birth index support 1917. Her family sheet gives 1916."], "questions": ["Joseph’s approximate birth year and the identity of his parents and partner remain open. The Jamaican baptism lead reportedly omits parents. The proposed Heathfield and McGill connections need a document linking those people to the London steward.", "Four possible additional children have been identified. Three have baptism-index matches under their father’s unusual name. The fourth is Herbert Archimedes. The original baptism entries or birth records naming both parents would settle these relationships and help test the family’s estimate.", "Richard Herbert is a candidate for Sarah’s father. In the Olney 1851 census index his children Marey Ann and Joseph fit two names and ages in the family research. Sarah’s own baptism would establish the link."], "next": ["Locate Warren’s birth or baptism for his birthplace. A January 1946 newspaper already names him and his sister as the children of Theodore and Airlie.", "Check the Scottish parish and inheritance references in the earlier families report, especially the generational links at Irvine and Kilwinning."]}};
+</script>
+<script>
+(function(){
+const F = window.FAMILY, P = F.people, byId = {}, kids = {};
+P.forEach(p => { byId[p.id] = p; kids[p.id] = []; });
+P.forEach(p => { if (p.parent) kids[p.parent].push(p); });
+const root = P.find(p => !p.parent);
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CONF = {c:['Confirmed','Matches an original record or official index'], p:['Probable','Fits on name, place and date, not proven'],
+              s:['Possible','A lead to check, may be someone else'], f:['Family papers','From the family notes, not independently checked']};
+const chip = k => k && CONF[k] ? `<span class="chip ${k}" title="${esc(CONF[k][1])}">${CONF[k][0]}</span>` : '';
+const img = f => 'images/' + f;
+const imgMeta = {}; (F.images || []).forEach(i => imgMeta[i.file] = i);
+const span = p => p.born && p.died ? `${p.born} – ${p.died}` : p.born ? `b. ${p.born}` : p.died ? `d. ${p.died}` : '';
+
+$('#h1').innerHTML = F.title; $('#sub').textContent = F.subtitle;
+
+/* ---------- tree layout ---------- */
+const CW = 196, GAP = 22, VG = 54, PADX = 96, PADY = 34;
+function measure(n){ const k = kids[n.id]; k.forEach(measure); n._w = Math.max(CW + GAP, k.reduce((a, c) => a + c._w, 0)); }
+function place(n, x, d){ n._d = d; const k = kids[n.id];
+  if (!k.length) { n._x = x + (n._w - CW) / 2; return; }
+  let cx = x + (n._w - k.reduce((a, c) => a + c._w, 0)) / 2;
+  k.forEach(c => { place(c, cx, d + 1); cx += c._w; });
+  n._x = (k[0]._x + k[k.length - 1]._x) / 2; }
+measure(root); place(root, PADX, 0);
+const canvas = $('#canvas'), scroller = $('#scroller'), sizer = $('#sizer');
+let W = 0, H = 0, zoom = 1, sel = null;
+
+function cardHTML(p){
+  const m = (p.spouses || []).map(s => `<span class="m">m. ${esc(s.name)}</span>`).join('');
+  return (p.portrait ? `<img src="${img(p.portrait)}" alt="">` : '') +
+    `<span class="t"><span class="n">${esc(p.name)}</span>` + (span(p) ? `<span class="d">${esc(span(p))}</span>` : '') +
+    (p.role ? `<span class="r">${esc(p.role)}</span>` : '') + m + `</span>`;
+}
+function build(){
+  canvas.innerHTML = '';
+  const els = {};
+  P.forEach(p => { const b = document.createElement('button'); b.className = 'card' + (p.line ? ' line' : '') + (p.unknown ? ' unknown' : '');
+    b.id = 'c-' + p.id; b.style.left = p._x + 'px'; b.innerHTML = cardHTML(p); b.addEventListener('click', () => select(p.id, true));
+    canvas.appendChild(b); els[p.id] = b; });
+  const maxD = Math.max(...P.map(p => p._d)), rowH = [], rowY = [];
+  for (let d = 0; d <= maxD; d++) rowH[d] = Math.max(...P.filter(p => p._d === d).map(p => els[p.id].offsetHeight));
+  let y = PADY; for (let d = 0; d <= maxD; d++) { rowY[d] = y; y += rowH[d] + VG; }
+  P.forEach(p => { p._y = rowY[p._d]; p._h = els[p.id].offsetHeight; els[p.id].style.top = p._y + 'px'; });
+  W = Math.max(...P.map(p => p._x)) + CW + 40; H = y - VG + PADY;
+  let paths = '';
+  P.forEach(p => { if (!p.parent) return; const q = byId[p.parent];
+    const x1 = q._x + CW / 2, y1 = q._y + q._h, x2 = p._x + CW / 2, y2 = p._y, my = y2 - VG / 2;
+    paths += `<path class="${p.line && q.line ? 'line' : ''}" d="M${x1},${y1}V${my}H${x2}V${y2}"/>`; });
+  canvas.insertAdjacentHTML('afterbegin', `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${paths}</svg>`);
+  (F.generations || []).forEach((g, d) => { if (rowY[d] == null) return; const s = document.createElement('div'); s.className = 'gen';
+    s.style.top = (rowY[d] - 20) + 'px'; s.textContent = g; canvas.appendChild(s); });
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px'; setZoom(zoom);
+}
+function setZoom(z){ zoom = Math.min(1.4, Math.max(.25, z)); canvas.style.transform = `scale(${zoom})`;
+  sizer.style.width = W * zoom + 'px'; sizer.style.height = H * zoom + 'px'; }
+function centre(id){ const p = byId[id]; if (!p) return;
+  scroller.scrollLeft = (p._x + CW / 2) * zoom - scroller.clientWidth / 2;
+  scroller.scrollTop = (p._y + p._h / 2) * zoom - scroller.clientHeight / 2; }
+$('#zin').onclick = () => setZoom(zoom + .15);
+$('#zout').onclick = () => setZoom(zoom - .15);
+$('#zfit').onclick = () => { setZoom(Math.min(scroller.clientWidth / W, scroller.clientHeight / H)); scroller.scrollLeft = scroller.scrollTop = 0; };
+$('#zline').onclick = () => { setZoom(1); const line = P.filter(p => p.line); const i = sel && byId[sel].line ? (line.findIndex(p => p.id === sel) + 1) % line.length : 0; select(line[i].id, false); };
+let drag = null;
+scroller.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.target.closest('.card')) return; drag = {x: e.clientX, y: e.clientY, l: scroller.scrollLeft, t: scroller.scrollTop}; scroller.classList.add('drag'); });
+window.addEventListener('pointermove', e => { if (!drag) return; scroller.scrollLeft = drag.l - (e.clientX - drag.x); scroller.scrollTop = drag.t - (e.clientY - drag.y); });
+window.addEventListener('pointerup', () => { drag = null; scroller.classList.remove('drag'); });
+
+/* ---------- detail ---------- */
+const narrow = () => window.matchMedia('(max-width: 860px)').matches;
+const link = id => `<button data-go="${id}">${esc(byId[id].name)}</button>`;
+const personPicker = $('#person-picker');
+for (const person of [...P].sort((a, b) => a.name.localeCompare(b.name))) {
+  personPicker.add(new Option(person.name, person.id));
+}
+personPicker.addEventListener('change', () => {
+  if (personPicker.value) select(personPicker.value, false);
+});
+function refs(f){ return (f.s || []).map(n => `<sup class="ref"><a href="#src-${n}" data-src="${n}">[${n}]</a></sup>`).join(''); }
+function figure(f){ const m = imgMeta[f] || {}; return `<figure><img src="${img(f)}" alt="${esc(m.caption || '')}" data-zoom="${esc(f)}" loading="lazy"><figcaption>${esc(m.caption || '')}<small>${esc(m.credit || '')}${m.licence ? ' · ' + esc(m.licence) : ''}</small></figcaption></figure>`; }
+function select(id, fromClick){
+  sel = id; const p = byId[id], d = $('#detail');
+  personPicker.value = id;
+  document.querySelectorAll('.card.sel').forEach(c => c.classList.remove('sel'));
+  const c = document.getElementById('c-' + id); if (c) c.classList.add('sel');
+  if (!fromClick) centre(id);
+  const par = p.parent ? byId[p.parent] : null, ch = kids[id];
+  let h = `<button class="close" id="dclose">← Back to the tree</button><div class="in">`;
+  h += `<div class="head">${p.portrait ? `<img src="${img(p.portrait)}" alt="Portrait of ${esc(p.name)}" data-zoom="${esc(p.portrait)}">` : ''}<div>` +
+       (p.rel ? `<div class="rel">${esc(p.rel)}</div>` : '') + `<h2>${esc(p.full || p.name)}</h2><div class="dates">${esc(p.lifeline || span(p))}</div></div></div>`;
+  if (p.bio) h += `<div>${p.bio.map(t => `<p>${t}</p>`).join('')}</div>`;
+  if (p.facts && p.facts.length) h += `<div><h3>Record</h3><ul class="facts">` + p.facts.map(f =>
+      `<li><span class="when">${esc(f.d || '')}</span><span>${f.t}${refs(f)} ${chip(f.c)}</span></li>`).join('') + `</ul></div>`;
+  let kin = '';
+  if (par) kin += `<div><b>Parent</b>${link(par.id)}${par.spouses && par.spouses[0] ? ' and ' + esc(par.spouses[0].name) : ''}</div>`;
+  (p.spouses || []).forEach(s => kin += `<div><b>Married</b>${esc(s.name)}${s.life ? ' (' + esc(s.life) + ')' : ''}${s.when ? ', ' + esc(s.when) : ''}${s.note ? '. ' + s.note : ''}</div>`);
+  if (ch.length) kin += `<div><b>Children</b>${ch.map(k => link(k.id)).join(', ')}</div>`;
+  if (kin) h += `<div><h3>Family</h3><div class="kin">${kin}</div></div>`;
+  if (p.images && p.images.length) h += `<div><h3>Pictures</h3><div class="pics">${p.images.map(figure).join('')}</div></div>`;
+  if (p.sources && p.sources.length) h += `<div><h3>Sources</h3><ol class="src">` + p.sources.map((s, i) =>
+      `<li id="src-${i + 1}">${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.t)}</a>` : esc(s.t)}</li>`).join('') + `</ol></div>`;
+  d.innerHTML = h + `</div>`; d.hidden = false; d.scrollTop = 0; $('#tree').classList.remove('nodetail');
+}
+$('#detail').addEventListener('click', e => {
+  const g = e.target.closest('[data-go]'); if (g) { select(g.dataset.go, false); return; }
+  const s = e.target.closest('[data-src]'); if (s) { e.preventDefault(); const el = document.getElementById('src-' + s.dataset.src); if (el) el.scrollIntoView({block: 'center'}); return; }
+  if (e.target.id === 'dclose') { $('#detail').hidden = true; return; }
+});
+document.addEventListener('click', e => { const z = e.target.closest('[data-zoom]'); if (!z) return; const f = z.dataset.zoom, m = imgMeta[f] || {};
+  const lb = document.createElement('div'); lb.className = 'lightbox'; lb.innerHTML = `<img src="${img(f)}" alt=""><p>${esc(m.caption || '')}${m.credit ? ' — ' + esc(m.credit) : ''}</p>`;
+  lb.onclick = () => lb.remove(); document.body.appendChild(lb); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const lb = $('.lightbox'); if (lb) lb.remove(); } });
+
+/* ---------- timeline ---------- */
+function timeline(){
+  const ev = [];
+  P.forEach(p => (p.facts || []).forEach(f => { if (f.y) ev.push({y: f.y, id: p.id, t: f.t, c: f.c}); }));
+  (F.context || []).forEach(c => ev.push({y: c.y, t: c.t, ctx: true}));
+  ev.sort((a, b) => a.y - b.y || (a.ctx ? -1 : 1));
+  const dec = {}; ev.forEach(e => { const k = Math.floor(e.y / 10) * 10; (dec[k] = dec[k] || []).push(e); });
+  $('#tlwrap').innerHTML = `<h2>Timeline</h2><p class="lede">Every dated event in the tree in one sequence, with the wider events the family lived through in italics.</p>` +
+    Object.keys(dec).sort((a, b) => a - b).map(k => `<div class="decade"><b>${k}s</b><ul class="tl">` + dec[k].map(e => e.ctx ?
+      `<li class="ctx"><span class="y">${e.y}</span><span>${e.t}</span></li>` :
+      `<li><span class="y">${e.y}</span><span><button data-go="${e.id}">${esc(byId[e.id].name)}</button> · ${e.t} ${chip(e.c)}</span></li>`).join('') + `</ul></div>`).join('');
+}
+$('#tlwrap').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { location.hash = 'tree'; setTimeout(() => select(g.dataset.go, false), 30); } });
+
+/* ---------- research log ---------- */
+function research(){
+  const N = F.notes || {}, sec = (t, a) => a && a.length ? `<div><h3>${t}</h3><ul>${a.map(x => `<li>${x}</li>`).join('')}</ul></div>` : '';
+  $('#rswrap').innerHTML = `<h2>Research log</h2><p class="lede">${N.intro || ''}</p><div class="rs">` +
+    `<div><h3>How sure is each statement</h3><div class="key">${Object.keys(CONF).map(k => `<span>${chip(k)} ${CONF[k][1]}</span>`).join('')}</div></div>` +
+    sec('What the research added', N.found) + sec('Corrections to the family notes', N.corrections) +
+    sec('Still unknown', N.questions) + sec('Where to look next', N.next) + sec('Picture credits', (F.images || []).map(i =>
+      `${esc(i.caption)}. ${esc(i.credit || '')}${i.licence ? ' (' + esc(i.licence) + ')' : ''}${i.source_url ? ` <a href="${esc(i.source_url)}" target="_blank" rel="noopener">source</a>` : ''}`)) + `</div>`;
+}
+
+/* ---------- routing ---------- */
+function route(){ const v = ['tree', 'timeline', 'research'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'tree';
+  document.querySelectorAll('section.view').forEach(s => s.hidden = s.id !== v);
+  document.querySelectorAll('nav.tabs a').forEach(a => a.getAttribute('href') === '#' + v ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  if (v === 'tree' && sel && !narrow()) centre(sel); }
+window.addEventListener('hashchange', route);
+
+function start(){ build(); timeline(); research(); route();
+  const first = F.start || root.id;
+  if (narrow()) { $('#detail').hidden = true; setZoom(.8); sel = first; const c = document.getElementById('c-' + first); if (c) c.classList.add('sel'); centre(first); }
+  else select(first, false); }
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(start); else start();
+window.addEventListener('load', () => { if (W) { const s = sel; build(); if (s) { const c = document.getElementById('c-' + s); if (c) c.classList.add('sel'); centre(s); } } });
+})();
+</script>
+</body></html>
