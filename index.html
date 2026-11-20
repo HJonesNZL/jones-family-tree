@@ -251,17 +251,17 @@ aside.detail .in{padding:20px clamp(18px,2vw,30px) 40px;gap:22px}
 </header>
 
 <main>
-  <section class="view" id="tree">
+  <section class="view nodetail" id="tree">
     <div class="chartcol">
       <div class="toolbar" aria-label="Chart controls">
         <label class="chart-field" for="chart-view">Show<select id="chart-view">
+          <option value="all">All family</option>
           <option value="direct">Direct line</option>
           <option value="jones">Jones descendants</option>
           <option value="morris">Airlie Morris’s ancestors</option>
           <option value="andrews">Isabel Andrews’s ancestors</option>
           <option value="herbert">Sarah Herbert’s ancestors</option>
           <option value="close">Close family</option>
-          <option value="all">All family</option>
         </select></label>
         <label class="chart-field" for="person-picker">Find a person<select id="person-picker">
           <option value="">Select a name</option>
@@ -285,7 +285,7 @@ aside.detail .in{padding:20px clamp(18px,2vw,30px) 40px;gap:22px}
         <button id="zline">Next in direct line <span aria-hidden="true">→</span></button>
       </div>
     </div>
-    <aside class="detail" id="detail" aria-live="polite"></aside>
+    <aside class="detail" id="detail" aria-live="polite" hidden></aside>
   </section>
   <section class="view page" id="ancestors" hidden>
     <div class="wrap">
@@ -590,9 +590,13 @@ function zoomAtCenter(factor) {
   scroller.scrollLeft = canvasInset() + chartX * zoom - x;
   scroller.scrollTop = chartY * zoom - y;
 }
+function fitChart() {
+  setZoom(fitZoom());
+  scroller.scrollLeft = scroller.scrollTop = 0;
+}
 $('#zin').onclick = () => zoomAtCenter(1.25);
 $('#zout').onclick = () => zoomAtCenter(.8);
-$('#zfit').onclick = () => { setZoom(fitZoom()); scroller.scrollLeft = scroller.scrollTop = 0; };
+$('#zfit').onclick = fitChart;
 $('#zline').onclick = () => {
   const line = P.filter(p => p.line);
   const next = line[(line.findIndex(p => p.id === sel) + 1) % line.length];
@@ -613,7 +617,8 @@ function changeView() {
     sel = target;
     personPicker.value = target;
     $('#c-' + target)?.classList.add('sel');
-    centre(target);
+    if (chartView.value === 'all') fitChart();
+    else centre(target);
   }
 }
 chartView.onchange = () => {
@@ -806,10 +811,12 @@ if ('ResizeObserver' in window) new ResizeObserver(() => {
   if (sel) centre(sel);
 }).observe(scroller);
 
-function start(){ build(); timeline(); research();
-  const first = F.start || P[0].id;
-  if (narrow()) { $('#detail').hidden = true; setZoom(1); sel = first; personPicker.value = first; const c = document.getElementById('c-' + first); if (c) c.classList.add('sel'); centre(first); }
-  else select(first, false);
+function start(){
+  build();
+  timeline();
+  research();
+  const [view, id] = location.hash.slice(1).split('/');
+  if (view !== 'person' || !byId[id]) fitChart();
   route();
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(start); else start();
